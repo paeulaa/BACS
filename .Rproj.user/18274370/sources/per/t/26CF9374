@@ -1,0 +1,23 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1645291151877.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "3850647464",
+    "id" : "26CF9374",
+    "lastKnownWriteTime" : 1645291110,
+    "last_content_update" : 1645291110,
+    "path" : "~/Desktop/BACS/HW01/HW01.R",
+    "project_path" : "HW01/HW01.R",
+    "properties" : {
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 1,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}
