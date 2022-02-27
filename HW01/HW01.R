@@ -35,6 +35,6 @@ hist(my_data$age, main="histogram", xlab="numbers", ylab="ages")
 #(b) density plot
 plot(density(my_data$age), main = "Density Plot", xlab = "ages", ylab = "density")
 #(c) boxplot+stripchart
-boxplot(my_data, main = "boxplot + stripchart", xlab = "ages")
-stripchart(my_data$age, add = TRUE, vertical = TRUE, method = "jitter")
+boxplot(my_data$age, main = "boxplot + stripchart", xlab = "ages", horizontal = TRUE)
+stripchart(my_data$age, add = TRUE, method = "stack")
 
