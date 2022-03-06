@@ -12,7 +12,7 @@ median(d123)
 d1_ <- rnorm(n=800, mean=30, sd=5)
 plot(density(d1_), col="blue", lwd=2, main = "Distribution 3")
 abline(v=mean(d1_), lwd = 2)
-abline(v=median(d1_))
+abline(v=median(d1_), col = "green")
 mean(d1_)
 median(d1_)
 #1c
@@ -86,7 +86,7 @@ h_3
 #3c
 out_data <- c(rand_data, runif(10, min=40, max=60))
 #(a)
-k1 <- ceiling(log2(length(data))+1)
+k1 <- ceiling(log2(length(out_data))+1)
 h1 <- (max(out_data) - min(out_data))/k1
 #(b)
 h2 <- 3.49*sd(out_data)/(length(out_data)^(1/3))
