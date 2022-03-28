@@ -4,34 +4,34 @@
 # iii. Will it increase or decrease our power to reject the null hypothesis?
 #  iv. Which kind of error (Type I or Type II) becomes more likely because of this scenario?
 #a
-#i.   systematic error
-#ii.  n will be effected, because we should gain more sampls to make our measurement representitive.
+#i.   Systematic error
+#ii.  Diff will be effected, because we should gain more sampls to make our measurement representitive.
 #iii. Decrease the power to reject null hypothesis.
 #iv.  TypeII error
 
 #b
-#i.   random error
-#ii.  n will be effected. We will get less data to make our result correct.
-#iii. Increase the power to reject null hypothesis.
-#iv.  TypeI error
+#i.   Random error
+#ii.  N will be effected. We will get less data to make our result correct.
+#iii. Decrease the power to reject null hypothesis.
+#iv.  TypeII error
 
 #c
 #i.   systematic error
-#ii.  It will affect the confidence level of our measurement.
+#ii.  It will affect the significant level of our measurement.
 #iii. Increase the power to reject null hypothesis.(increse the number of power test)
 #iv.  TypeI error
 
 #d
 #i.   systematic error
-#ii.  It will increase the mean and diff of smartphone usage.
+#ii.  It will increase the sd of smartphone usage.
 #iii. Increase the power to reject null hypothesis.
-#iv.  TypeI error
+#iv.  TypeII error
 
 #(question2)
 verizon <- read.csv("verizon.csv")
 time <- verizon$Time
 #a(i)
-t.test(time, mu=7.6, alternative="greater", conf.level=0.99)#one tailed mean greater or less???
+t.test(time, mu=7.6, alternative="less", conf.level=0.99)#one tailed mean greater or less???
 #a(ii)
 hyp <- 7.6
 power.t.test(n = length(time), delta = mean(time) - hyp, sd = sd(time), alternative = "one.sided")
