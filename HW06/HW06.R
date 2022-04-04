@@ -3,7 +3,8 @@
 #In this question, we don't need id, so the formation od tidyr is more tidy to me.
 
 #1.b
-# data <- read.csv("./verizon_wide.csv")
+data <- read.csv("./verizon_wide.csv")
+data
 # ILEC <- na.omit(data$ILEC)
 # CLEC <- na.omit(data$CLEC)
 # long <- data.frame(
@@ -15,7 +16,9 @@
 library(tidyr)
 load_long <- gather(data, na.rm = TRUE, key = "host", value = "load_time")
 load_long
-
+library(reshape2)
+loads_long <- melt(page_loads, na.rm = TRUE, variable.name = "host", value.name = "load_time")
+loads_long
 #1.c
 head(long)
 tail(long)
