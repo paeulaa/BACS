@@ -1,0 +1,190 @@
+---
+title: "HW10"
+author: "107070008"
+output: pdf_document
+---
+# Question 1) Download demo_simple_regression_rsq.R from Canvas – it has a function that runs a regression simulation. This week, the simulation also reports R2 along with the other metrics from last week.
+
+```{r Q1}
+source("demo_simple_regression_rsq.r")
+s1 <- read.table("./s1.txt")
+plot_regr_rsq(s1)
+s2 <- read.table("./s2.txt")
+plot_regr_rsq(s2)
+s3 <- read.table("./s3.txt")
+plot_regr_rsq(s3)
+s4 <- read.table("./s4.txt")
+plot_regr_rsq(s4)
+```
+
+## a. Comparing scenarios 1 and 2, which do we expect to have a stronger R2 ?
+s1 has a stronger R squared.
+
+## b. Comparing scenarios 3 and 4, which do we expect to have a stronger R2 ?
+s3 has a stronger R squared.
+
+## c. Comparing scenarios 1 and 2, which do we expect has bigger/smaller SSE, SSR, and SST? (intuitively)
+s2 has a larger SSR, larger SSE, larger SST.
+
+## d .Comparing scenarios 3 and 4, which do we expect has bigger/smaller SSE, SSR, and SST? (intuitively)
+s4 has a larger SSR, larger SSE, larger SST.
+
+# Question 2) Let’s perform regression ourselves on the programmer_salaries.txt dataset we saw in class.
+
+## a. First, use the lm() function to estimate the model Salary ~ Experience + Score + Degree 
+```{r Q2a}
+salaries <- read.csv("programmer_salaries.txt", sep="\t")
+salaries_reg <- lm(Salary ~ Experience + Score + Degree, data = salaries)
+summary(salaries_reg)
+salaries_reg$fitted.values[1:5]
+salaries_reg$residuals[1:5]
+```
+
+## b. Use only linear algebra (and the geometric view of regression) to estimate the regression yourself:
+i. Create an X matrix that has a first column of 1s followed by columns of the independent variables (only show the code)
+```{r Q2bi}
+X_1 <- t(matrix(1, ncol = 20))
+X <- cbind(X_1, salaries$Experience, salaries$Score, salaries$Degree)
+X
+```
+
+ii. Create a y vector with the Salary values (only show the code)
+```{r Q2bii}
+y <- salaries$Salary
+y
+```
+
+iii. Compute the beta_hat vector of estimated regression coefficients (show the code and values)
+```{r Q2biii}
+beta_hat <- solve(t(X) %*% X) %*% t(X) %*% y
+beta_hat
+```
+
+iv. Compute a y_hat vector of estimated y values, and a res vector of residuals 
+(show the code and the first 5 values of y_hat and res)
+```{r Q2biv}
+y_hat <- X %*% beta_hat
+y_hat
+res <- y - y_hat
+res
+```
+
+v. Using only the results from (i) – (iv), compute SSR, SSE and SST (show the code and values)
+```{r Q2bv}
+SSE <- sum((y - y_hat)^2)
+SSE
+RSquared <- cor(y, y_hat)^2
+SST <- SSE/(1-RSquared)
+SST
+SSR <- SST - SSE
+SSR
+```
+
+## c. Compute R2 for in two ways, and confirm you get the same results (show code and values):
+i. Use any combination of SSR, SSE, and SST
+```{r Q2ci}
+RSquared_i <- SSR/SST
+RSquared_i
+```
+
+ii. Use the squared correlation of vectors y and y hat
+```{r Q2cii}
+RSquared_ii <- cor(y, y_hat)^2
+RSquared_ii
+```
+
+# Question 3) We’re going to take a look back at the early heady days of global car manufacturing, when American, Japanese, and European cars competed to rule the world. 
+```{r Qai3}
+auto <- read.table("auto-data.txt", header=FALSE, na.strings = "?")
+names(auto) <- c("mpg", "cylinders", "displacement", "horsepower", "weight", 
+                 "acceleration", "model_year", "origin", "car_name")
+```
+
+## a. Let’s first try exploring this data and problem:
+i. Visualize the data in any way you feel relevant (report only relevant/interesting ones)
+```{r Q3ai}
+plot(auto$mpg, auto$cylinders, pch = 19, col = "lightblue", main = "mpg-cylinders")
+abline(lm(auto$cylinders ~ auto$mpg), col = "green", lwd = 3)
+plot(auto$mpg, auto$displacement, pch = 19, col = "lightblue", main = "mpg-displacement")
+abline(lm(auto$displacement ~ auto$mpg), col = "green", lwd = 3)
+plot(auto$mpg, auto$horsepower, pch = 19, col = "lightblue", main = "mpg-horsepower")
+abline(lm(auto$horsepower ~ auto$mpg), col = "green", lwd = 3)
+plot(auto$mpg, auto$weight, pch = 19, col = "lightblue", main = "mpg-weight")
+abline(lm(auto$weight ~ auto$mpg), col = "green", lwd = 3)
+plot(auto$mpg, auto$model_year, pch = 19, col = "lightblue", main = "mpg-model_year")
+abline(lm(auto$model_year ~ auto$mpg), col = "green", lwd = 3)
+plot(auto$mpg, auto$origin, pch = 19, col = "lightblue", main = "mpg-origin")
+abline(lm(auto$origin ~ auto$mpg), col = "green", lwd = 3)
+```
+
+ii. Report a correlation table of all variables, rounding to two decimal places
+```{r Q3aii}
+auto_m <- data.matrix(auto)
+res <- cor(auto_m, use="pairwise.complete.obs")
+round(res, 2)
+```
+
+iii. From the visualizations and correlations, which variables seem to relate to mpg?
+```{r Q3aiii}
+library(corrplot)
+corrplot(round(res, 2), type = "upper", order = "hclust", tl.col = "black", tl.srt = 45)
+```
+`displacement, weight, cylinders, horsepower`
+
+iv. Which relationships might not be linear? 
+`Name`
+
+v. Are there any pairs of independent variables that are highly correlated (r > 0.7)?
+`(horsepower, weight) (horsepower, cylinders) (horsepower, displacement)
+(weight, cylinders) (weight, displacement) (cylinders, displacement)`
+
+## b. Let’s create a linear regression model where mpg is dependent upon all other suitable variables 
+i. Which independent variables have a ‘significant’ relationship with mpg at 1% significance?
+```{r Q3bi}
+auto_m2 <- as.data.frame(auto_m)
+mpg_rgm <- lm(mpg ~ cylinders + displacement + horsepower + 
+                weight + acceleration + model_year + 
+                factor(origin), data = auto_m2)
+summary(mpg_rgm)
+```
+`displacement`
+
+ii. Looking at the coefficients, is it possible to determine which independent variables are the most effective at increasing mpg? If so, which ones, and if not, why not?
+```{r Q3bii}
+mpg_rgm$coefficients
+```
+`The abs number of cylinders's coefficient is the biggest, so it will efficiently increase mpg the most.`
+
+## c. Let’s try to resolve some of the issues with our regression model above.
+i. Create fully standardized regression results: are these slopes easier to compare?
+```{r Q3ci}
+auto_ <- auto_m[complete.cases(auto_m),]
+auto_ <- auto_[, -8]
+col_mean <- apply(auto_, 2, mean)
+mean_matrix <- t(replicate(nrow(auto_), col_mean))
+col_sd <- apply(auto_, 2, sd)
+sd_matrix <- t(replicate(nrow(auto_), col_sd))
+auto_std <- (auto_ - mean_matrix)/sd_matrix
+
+mpg_reg_all <- lm(mpg ~ cylinders + displacement + horsepower + 
+                    weight + acceleration + model_year + car_name, as.data.frame(auto_std))
+summary(mpg_reg_all)
+```
+`Yes, in standardize type, it is easier to compare.`
+
+ii. Regress mpg over each nonsignificant independent variable, individually.
+Which ones become significant when we regress mpg over them individually?
+```{r Q3cii}
+summary(lm(mpg ~ factor(origin) , as.data.frame(auto_m)))
+summary(lm(mpg ~ car_name , as.data.frame(auto_m)))
+summary(lm(mpg ~ acceleration , as.data.frame(auto_m)))
+summary(lm(mpg ~ model_year , as.data.frame(auto_m)))
+```
+`origin is the most significant.`
+
+iii. Plot the density of the residuals: are they normally distributed and centered around zero?
+```{r Q3ciii}
+plot(density(mpg_reg_all$residuals), col = "skyblue", lwd = 3)
+abline(v=mean(mpg_reg_all$residuals), col = "green", lwd = 3)
+```
+`Yes, they are normally distributed and centered around zero`
