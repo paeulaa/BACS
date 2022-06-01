@@ -1,0 +1,109 @@
+---
+title: "HW14"
+author: '107070008'
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+# Question 1) Earlier, we examined a dataset from a security survey sent to customers of e-commerce websites. However, we only used the eigenvalue > 1 criteria and the screeplot to find a suitable number of components. Let’s perform a parallel analysis as well this week:
+```{r Q1}
+library("readxl")
+sa <- read_excel("security_questions.xlsx")
+```
+
+### a. Show a single visualization with scree plot of data, scree plot of simulated noise (use average eigenvalues of > 100 noise samples), and a horizontal line showing the eigenvalue = 1 cutoff.
+```{r Q1a}
+sa_eigen <- eigen(cor(sa))
+sa_eigen$values/sum(sa_eigen$values)
+sa_pca <- prcomp(sa, scale. = TRUE)
+
+library(magrittr)
+noise <- data.frame(replicate(ncol(sa), rnorm(nrow(sa))))
+noise_pca <- prcomp(noise, scale. = TRUE)
+var_sa <- (sa_pca$sdev)^2
+
+screeplot(noise_pca, type="lines", ylim = c(0,10))
+lines(var_sa, type="b", col = "gray")
+abline(h=1, col = "darkgray")
+```
+
+
+### b. How many dimensions would you retain if we used Parallel Analysis?
+```{r Q1b}
+sa_pca <- prcomp(sa, scale. = TRUE)
+sim_noise_ev <- function(n, p) {
+  noise<-data.frame(replicate(p, rnorm(n)))
+  eigen(cor(noise))$values
+}
+evalues_noise<- replicate(100, sim_noise_ev(ncol(sa), nrow(sa)))
+evalues_mean <- apply(evalues_noise, 1, mean)
+screeplot(sa_pca, type="lines", ylim = c(0,45))
+lines(evalues_mean, type="b", col = "gray")
+abline(h=1,lty ="dotted")
+```
+`Nome of major dimensions seems to exist in these correlates.`
+
+# Question 2) Earlier, we treated the underlying dimensions of the security dataset as composites and examined their eigenvectors (weights). Now, let’s treat them as factors and examine factor loadings (use the principal() method from the psych package)
+```{r Q2}
+library(psych)
+sa_principal <- principal(sa, nfactor=3, rotate="none", scores=TRUE)
+```
+
+### a. Looking at the loadings of the first 3 principal components, to which components does each item seem to best belong?
+```{r Q2a}
+sa_principal$loadings
+```
+`PC1 : Q1, Q3, Q8, Q9, Q11, Q13, Q14, Q15, Q16, Q18 /PC2 : none of them /PC3 : none of them`
+
+### b. How much of the total variance of the security dataset do the first 3 PCs capture?
+```{r Q2b}
+sa_eigen$values[1:3] /sum(sa_eigen$values)
+```
+
+### c. Looking at commonality and uniqueness, which items are less than adequately explained by the first 3 principal components?
+```{r Q2c}
+sa_principal$uniquenesses
+```
+`In Q2, its u2 is higer than 50%, so it cannot fully interpreted by these three PCAS.`
+
+### d. How many measurement items share similar loadings between 2 or more components?
+```{r Q2d}
+plot(sa_principal$loadings)
+text(sa_principal$loadings, pos=1, labels = rownames(sa_principal$loadings))
+```
+`There are five elements. Q1 & Q14 & Q18, Q4 & Q12 & Q17, Q6 & Q10`
+
+### e. Can you interpret a ‘meaning’ behind the first principal component from the items that load best upon it? (see the wording of the questions of those items)
+`The higer component represent that this site respects the confidentiality of the transactions received from the users, vice versa.`
+
+# Question 3) To improve interpretability of loadings, let’s rotate the our principal component axes using the varimax technique to get rotated components (extract and rotate only three principal components)
+```{r Q3}
+sa_pca_rot <- principal(sa, nfactor=3, rotate="varimax", scores=TRUE)
+sa_pca_rot
+```
+
+### a. Individually, does each rotated component (RC) explain the same, or different, amount of variance than the corresponding principal components (PCs)?
+```{r Q3a}
+sa_principal$loadings
+sa_pca_rot$loadings
+```
+`Yes, they are different.`
+
+### b. Together, do the three rotated components explain the same, more, or less cumulative variance as the three principal components combined?
+`The first value is smaller than PCA, and the second and the third values are bigger than PCA.`
+
+### c. Looking back at the items that shared similar loadings with multiple principal components (#2d), do those items have more clearly differentiated loadings among rotated components?
+`RC2 RC3 are similar to multiple principal components.`
+
+### d. Can you now more easily interpret the “meaning” of the 3 rotated components from the items that load best upon each of them? (see the wording of the questions of those items)
+`Yes, after reotating our PCA, we can interpret those datas easier.`
+
+### e. If we reduced the number of extracted and rotated components to 2, does the meaning of our rotated components change?
+```{r Q3e}
+sa_pca_rot <- principal(sa, nfactor=3, rotate="varimax", scores=TRUE)
+sa_pca_rot
+```
+`No, because RC1 and RC2 didn't change a lots.`
+
+
