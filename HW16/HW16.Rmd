@@ -1,0 +1,141 @@
+---
+title: "HW16"
+author: "Paula"
+output: pdf_document
+---
+# Question 1) Let’s work with the cars_log model and test some basic prediction. Split the data into train and test sets (70:30) and try to predict log.mpg. for the smaller test set:
+```{r Q1}
+# Load the data and remove missing values
+cars <- read.table("auto-data.txt", header=FALSE, na.strings = "?")
+names(cars) <- c("mpg", "cylinders", "displacement", "horsepower", "weight", 
+                 "acceleration", "model_year", "origin", "car_name")
+cars$car_name <- NULL
+cars <- na.omit(cars)
+
+# Shuffle the rows of cars
+set.seed(27935752)
+cars <- cars[sample(1:nrow(cars)),]
+
+# Create a log transformed dataset also
+cars_log <- with(cars, data.frame(log(mpg), log(cylinders), log(displacement),
+                                  log(horsepower), log(weight), log(acceleration), 
+                                  model_year, origin))
+# Linear model of mpg over all the variables that don’t have multicollinearity
+cars_lm <- lm(mpg ~ weight + acceleration + model_year + factor(origin), data=cars)
+# Linear model of log mpg over all the log variables that don’t have multicollinearity
+cars_log_lm <- lm(log.mpg. ~ log.weight. + log.acceleration. + model_year + factor(origin),  
+                  data=cars_log)
+# Linear model of log mpg over all the log variables, including multicollinear terms!
+cars_log_full_lm <- lm(log.mpg. ~ log.cylinders. + log.displacement. + log.horsepower. + 
+                         log.weight. + log.acceleration. + model_year + factor(origin),
+                       data=cars_log)
+```
+
+### a. Retrain the cars_log_lm model on just the training dataset (call the new model: lm_trained); Show the coefficients of the trained model
+```{r Q1a}
+set.seed(27935752)
+train_indices <- sample(1:nrow(cars_log), size = 0.70*nrow(cars_log))
+train_set <- cars_log[train_indices,]
+lm_trained <- lm(log.mpg. ~ log.weight. + log.acceleration. + 
+                   model_year + factor(origin), data = train_set)
+lm_trained
+```
+
+### b. Use the lm_trained model to predict the log.mpg. of the test dataset
+```{r Q1b}
+test_set <- cars_log[-train_indices,]
+mpg_predicted <- predict(lm_trained, test_set)
+mpg_predicted
+```
+
+**i. What is the in-sample mean-square fitting error (MSEIS) of the trained model?**
+```{r Q1bi}
+mse_is <- mean((train_set$log.mpg - fitted(lm_trained))^2)
+mse_is <- mean(residuals(lm_trained)^2)
+mse_is
+```
+
+**ii. What is the out-of-sample mean-square prediction error (MSEOOS) of the test dataset?**
+```{r Q1bii}
+mpg_actual <- test_set$log.mpg.
+mse_oos <- mean((mpg_predicted - mpg_actual)^2)
+mse_oos
+```
+
+### c. Show a data frame of the test set’s actual log.mpg., the predicted values, and the difference of the two (predictive error); Just show us the first several rows
+```{r Q1c}
+head(mpg_actual)
+head(mpg_predicted)
+pred_err <- mpg_actual - mpg_predicted
+head(pred_err) 
+```
+
+# Question 2) Let’s see how our three large models described in the setup at the top perform predictively!
+
+### a. Report the MSEIS of the cars_lm, cars_log_lm, and cars_log_full_lm; Which model has the best (lowest) mean-square fitting error? Which has the worst?
+```{r Q2a}
+cars_lm_mse_is <- mean((cars$mpg - fitted(cars_lm))^2)
+cars_lm_mse_is  <- mean(residuals(cars_lm)^2)
+cars_lm_mse_is 
+
+cars_log_lm_mse_is <- mean((cars_log$log.mpg. - fitted(cars_log_lm))^2)
+cars_log_lm_mse_is  <- mean(residuals(cars_log_lm)^2)
+cars_log_lm_mse_is 
+
+cars_log_full_lm_mse_is <- mean((cars_log$log.mpg. - fitted(cars_log_full_lm))^2)
+cars_log_full_lm_mse_is  <- mean(residuals(cars_log_full_lm)^2)
+cars_log_full_lm_mse_is 
+```
+`cars_log_full_lm has the best, and cars_lm_mse has the worst.`
+
+### b. Try writing a function that performs k-fold cross-validation (see class notes and ask in Teams for hints!). Name your function k_fold_mse(dataset, k=10, …) – it should return the MSEOOS of the operation. Your function may must accept a dataset and number of folds (k) but can also have whatever other parameters you wish.
+```{r Q2b}
+library(magrittr)
+k_fold_mse <- function(data, k, model){
+  data_shuffle_indices <- sample(1:nrow(data),replace = F)
+  data_shuffle <- data[data_shuffle_indices,]
+  fold_indices <- cut(1:nrow(data), k, labels = FALSE)
+  f <- format(terms(model)) %>% paste(., collapse = " ") %>% as.formula()
+  #to reuse the formula in the model#to reuse the formula in the model
+  fold_pred_errors <- fold_indices
+  for(i in 1:k){
+    test_set <- data_shuffle[fold_indices == i,]
+    train_set <- data_shuffle[fold_indices != i,]
+    k_model <- lm(f,train_set)
+    predicted <- predict(k_model, test_set)
+    formula <- k_model$model %>% names()
+    real_value <- test_set[,colnames(test_set) == formula[1]]
+    fold_pred_errors[fold_pred_errors==i] <- (real_value - predicted)
+  }
+  return(mean(fold_pred_errors^2))
+}
+```
+
+**i. Use/modify your k-fold cross-validation function to find and report the MSEOOS for cars_lm – recall that this non-transformed data/model has non-linearities**
+```{r Q2bi}
+k_fold_mse(cars, 10, cars_lm)
+```
+
+**ii. Use/modify your k-fold cross-validation function to find and report the MSEOOS for cars_log_lm – does it predict better than cars_lm? Was non-linearity harming predictions?**
+```{r Q2bii}
+k_fold_mse(cars_log, 10, cars_log_lm)
+```
+`The number is smaller than cars' mse_oos, so it predict better.`
+`No, it didn't harm the predictions.`
+
+**iii. Use/modify your k-fold cross-validation function to find and report the MSEOOS for cars_log_lm_full – this model has collinear terms; so does multicollinearity seem to harm the predictions?**
+```{r Q2biii}
+k_fold_mse(cars_log, 10, cars_log_full_lm)
+```
+`The number is slightly smaller tham cars_log's mse_oos, and multicollinearity still not seem to harm the prediction.`
+
+### c. Check if your k_fold_mse function can do as many folds as there are rows in the data (i.e., k=392). Report the MSEOOS for the cars_log_lm model with k=392.
+```{r Q2c}
+k_fold_mse(cars_log, 392, cars_log_lm)
+```
+
+
+
+
+
+

@@ -1,0 +1,224 @@
+---
+title: "HW17"
+author: "107070008"
+output: pdf_document
+---
+
+```{r hw17}
+insurance <- read.csv("insurance.csv")
+insur <- na.omit(insurance)
+```
+
+# Question 1) Create some explanatory models to learn more about charges:
+
+## a. Create an OLS regression model and report which factors are significantly related to charges
+```{r Q1a}
+ols_lm <- lm(charges ~ age + factor(sex) + bmi + children +
+               factor(smoker) + factor(region), data = insur)
+summary(ols_lm)
+```
+
+## b. Create a decision (regression) tree with default parameters
+**i. Plot a visual representation of the tree**
+```{r Q1bi}
+library(rpart)
+library(rpart.plot)
+tree_lm <- rpart(charges ~ age + factor(sex) + bmi + 
+                   children + factor(smoker) + factor(region), data = insur)
+
+rpart.plot(tree_lm)
+```
+
+**ii. How deep is the tree (see nodes with “decisions” – ignore the leaves at the bottom)**
+`2`
+
+**iii. How many leaf groups does it suggest to bin the data into?**
+`4`
+
+**iv. What is the average charges of each leaf group?**
+`2705.2182`, `8.4364`
+
+**v. What conditions (decisions) describe each group?**
+`age < 43`, `bmi < 30`
+
+# Question 2) Let’s use LOOCV to se how how our models perform predictively
+```{r Q2}
+fold_i_pe <- function(i, k, model, dataset, outcome) {
+    folds <- cut(1:nrow(dataset), breaks=k, labels=FALSE)
+    test_indices <- which(folds==i)
+    test_set <- dataset[test_indices, ]
+    train_set <- dataset[-test_indices, ]
+    trained_model <- update(model, data = train_set)
+    predictions <- predict(trained_model, test_set)
+    dataset[test_indices, outcome]- predictions
+}
+
+#library(Metrics)
+k_fold_mse <- function(model, dataset, outcome, k){
+    shuffled_indicies <- sample(1:nrow(dataset))
+    dataset <- dataset[shuffled_indicies,]
+    fold_pred_errors <- sapply(1:k, function(kth) {
+        fold_i_pe(kth, k, model, dataset, outcome)
+      })
+    pred_errors <- unlist(fold_pred_errors)
+    
+    mse <- function(errs){mean(errs^2)}
+    c(is = mse(residuals(model)), oos = mse(pred_errors))
+}
+```
+
+## a. What is the RMSEoos for the OLS regression model?
+```{r Q2a}
+ols_kfm <- k_fold_mse(ols_lm, insur, "charges", 10)
+sqrt(ols_kfm[2])
+```
+
+## b. What is the RMSEoos for the decision tree model?
+```{r Q2b}
+tree_kfm <- k_fold_mse(tree_lm, insur, "charges", 10)
+sqrt(tree_kfm[2])
+```
+
+# Question 3) Let’s see if bagging helps our models
+
+## a. Write bagged_learn(…) and bagged_predict(…) functions using the hints in the class notes and help from your classmates on Teams. Feel free to share your code generously on Teams to get feedback, or ask others for help.
+```{r Q3a}
+set.seed(27935752)
+train_indices <- sample(1:nrow(insur), size = 0.80*nrow(insur))
+train_set <- insur[train_indices,]
+test_set <- insur[-train_indices,]
+
+bagged_learn <- function(model, dataset, b=100) {
+    lapply(1:b, function(i) {
+       boot_index <- sample(nrow(dataset), replace = TRUE)
+       boot_dataset <- dataset[boot_index,]
+       boot_model <- update(model, data=boot_dataset)
+       return(boot_model)
+    })
+}
+bagged_predict <- function(bagged_models, new_data, b=100) {
+    predictions <- lapply(1:b, function(i){
+      predict(bagged_models[[i]], new_data)
+    })
+    apply(as.data.frame(predictions), 1, mean)
+}
+
+mse_oos <- function(actual, pred){
+  sqrt(mean((actual-pred)^2))
+}
+```
+
+## b. What is the RMSEoos for the bagged OLS regression?
+```{r Q3b}
+bagged_model <- bagged_learn(ols_lm, train_set, 100)
+bagged_prediction <- bagged_predict(bagged_model, test_set, 100)
+
+mse_oos(test_set$charges, bagged_prediction)
+```
+
+## c. What is the RMSEoos for the bagged decision tree?
+```{r Q3c}
+bagged_model <- bagged_learn(tree_lm, train_set, 100)
+bagged_prediction <- bagged_predict(bagged_model, test_set, 100)
+
+mse_oos(test_set$charges, bagged_prediction)
+```
+
+# Question 3) Let’s see if boosting helps our models. You can use a learning rate of 0.1 and adjust it if you find a better rate.
+
+## a. Write boosted_learn(…) and boosted_predict(…) functions using the hints in the class notes and help from your classmates on Teams. Feel free to share your code generously on Teams to get feedback, or ask others for help.
+```{r Q32a}
+boost_learn <- function(model, dataset, n=100, rate=0.1) {
+    predictors <- dataset[, 1:6]
+    
+    res <-dataset[, 7]
+    models <- list()
+    
+    for(i in 1:n) {
+      this_model <- update(model, data = cbind(charges=res, predictors))
+      res <- res - rate*predict(this_model)
+      models[[i]] <-this_model
+    }
+    list(models=models, rate=rate)
+}
+
+#library(magrittr)
+boost_predict <- function(boosted_learning, new_data) {
+    boosted_models <- boosted_learning$models
+    rate <- boosted_learning$rate
+    n<-length(boosted_learning$models)
+    
+    predictions <- lapply(1:n, function(i){
+      rate*predict(boosted_models[[i]], new_data)
+    })
+  
+    pred_frame <- unname(as.data.frame(predictions))
+    apply(pred_frame, 1, sum)
+}
+```
+
+## b. What is the RMSEoos for the boosted OLS regression?
+```{r Q32b}
+boosted_model <- boost_learn(ols_lm, train_set, 100, 0.1)
+boost_prediction <- boost_predict(boosted_model, test_set)
+
+mse_oos(test_set$charges, unlist(boost_prediction))
+```
+
+## c. What is the RMSEoos for the boosted decision tree?
+```{r Q32c}
+boosted_model <- boost_learn(tree_lm, train_set, 100, 0.1)
+boost_prediction <- boost_predict(boosted_model, test_set)
+
+mse_oos(test_set$charges, unlist(boost_prediction))
+```
+
+# Question 4) Let’s engineer the best predictive decision trees. Let’s repeat the bagging and boosting decision tree several times to see what kind of base tree helps us learn the fastest. Report the RMSEoos at each step.
+
+## a. Repeat the bagging of the decision tree, using a base tree of maximum depth 1, 2, … n while the RMSEoos keeps dropping; stop when the RMSEoos has started increasing again.
+```{r Q4a}
+pre <- 1000000
+for(i in 1:30){
+  tree_stump <- rpart(charges ~ age + factor(sex) + bmi +
+                        children + factor(smoker) + factor(region),
+                      data = insur, cp=0, maxdepth=i)
+  
+  bagged_model <- bagged_learn(tree_lm, train_set, 30)
+  bagged_prediction <- bagged_predict(bagged_model, test_set, 30)
+  rmse_tree <- mse_oos(test_set$charges, bagged_prediction)
+  cat(rmse_tree , sep = "\n")
+  if(rmse_tree > pre) break
+  
+  pre <- rmse_tree
+}
+```
+
+## b. Repeat the boosting of the decision tree, using a base tree of maximum depth 1, 2, … n while the RMSEoos keeps dropping; stop when the RMSEoos has started increasing again.
+```{r Q4b}
+pre <- 1000000
+for(i in 1:30){
+  tree_stump <- rpart(charges ~ age + factor(sex) + bmi +
+                            children + factor(smoker) + factor(region),
+                          data = insur, cp=0, maxdepth=i)
+
+  boosted_model <- boost_learn(tree_stump, train_set, 30, 0.1)
+  boost_prediction <- boost_predict(boosted_model, test_set)
+  rmse_tree <- mse_oos(test_set$charges, unlist(boost_prediction))
+  cat(rmse_tree , sep = "\n")
+  if(rmse_tree > pre) break
+
+  pre <- rmse_tree
+ 
+}
+```
+
+
+
+
+
+
+
+
+
+
+
